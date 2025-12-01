@@ -316,6 +316,6 @@ public:
 };
 }  // namespace sensor_msgs
 
-#include <sensor_msgs/impl/point_cloud2_iterator_harrp.hpp> // NOLINT
+#include <sensor_msgs/impl/point_cloud2_iterator.hpp> // NOLINT
 
 #endif  // SENSOR_MSGS__POINT_CLOUD2_ITERATOR_HPP_

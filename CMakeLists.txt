@@ -1,18 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 cmake_minimum_required(VERSION 3.5)
 project(pp_infer)
 set(PROJECT_NAME pp_infer)
@@ -35,9 +20,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(vision_msgs REQUIRED)
@@ -85,23 +67,56 @@ link_directories(
     /usr/${ARCH}-linux-gnu/lib/
 )
 
-file(GLOB_RECURSE SOURCE_FILES
+# ========================================================
+# 1. Original pp_infer Target
+# ========================================================
+# オリジナルのソースファイルを明示的に指定
+set(ORIGINAL_SOURCES
     src/pointpillar.cpp
     src/postprocess.cpp
 )
 
-
-cuda_add_executable(${PROJECT_NAME} src/pp_inference_node.cpp ${SOURCE_FILES})
+cuda_add_executable(${PROJECT_NAME} 
+    src/pp_inference_node.cpp 
+    ${ORIGINAL_SOURCES}
+)
 ament_target_dependencies(${PROJECT_NAME} rclcpp std_msgs vision_msgs geometry_msgs PCL CUDA)
-
 target_link_libraries(${PROJECT_NAME}
     libnvinfer.so
     libnvonnxparser.so
     libnvinfer_plugin.so
 )
 
+# ========================================================
+# 2. HARRP Custom Target (pp_infer_harrp)
+# ========================================================
+# HARRP用のソースファイルを指定 (pointpillar_harrp.cppを使用)
+set(HARRP_SOURCES
+    src/pointpillar_harrp.cpp
+    src/postprocess.cpp
+)
+
+# ターゲット名を変更: pp_infer -> pp_infer_harrp
+cuda_add_executable(${PROJECT_NAME}_harrp 
+    src/pp_inference_node_harrp.cpp 
+    ${HARRP_SOURCES}
+)
+
+# HARRP用ターゲットの依存関係とリンク設定
+ament_target_dependencies(${PROJECT_NAME}_harrp rclcpp std_msgs vision_msgs geometry_msgs PCL CUDA)
+target_link_libraries(${PROJECT_NAME}_harrp
+    libnvinfer.so
+    libnvonnxparser.so
+    libnvinfer_plugin.so
+)
+
+# ========================================================
+# Install Rules
+# ========================================================
+# 両方の実行ファイルをインストール対象にします
 install(TARGETS
-	${PROJECT_NAME}
+    ${PROJECT_NAME}        # pp_infer
+    ${PROJECT_NAME}_harrp  # pp_infer_harrp
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

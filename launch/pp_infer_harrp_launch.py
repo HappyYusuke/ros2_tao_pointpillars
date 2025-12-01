@@ -21,7 +21,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='pp_infer',
-            executable='pp_infer',
+            executable='pp_infer_harrp',
             parameters=[{
                 'nms_iou_thresh': 0.01,
                 'pre_nms_top_n': 4096,
