@@ -26,6 +26,7 @@ find_package(vision_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(PCL REQUIRED)
 find_package(CUDA REQUIRED)
+find_package(rclcpp_components REQUIRED)
 
 set(CUDA_VERSION 11.3)
 set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-${CUDA_VERSION})
@@ -90,37 +91,65 @@ target_link_libraries(${PROJECT_NAME}
 # ========================================================
 # 2. HARRP Custom Target (pp_infer_harrp)
 # ========================================================
-# HARRP用のソースファイルを指定 (pointpillar_harrp.cppを使用)
 set(HARRP_SOURCES
     src/pointpillar_harrp.cpp
     src/postprocess.cpp
 )
 
-# ターゲット名を変更: pp_infer -> pp_infer_harrp
-cuda_add_executable(${PROJECT_NAME}_harrp 
+# 【変更】cuda_add_executable から cuda_add_library (SHARED) に変更
+# ターゲット名も少し変えておくと分かりやすいです: pp_infer_harrp_component
+cuda_add_library(${PROJECT_NAME}_harrp_component SHARED
     src/pp_inference_node_harrp.cpp 
     ${HARRP_SOURCES}
 )
 
-# HARRP用ターゲットの依存関係とリンク設定
-ament_target_dependencies(${PROJECT_NAME}_harrp rclcpp std_msgs vision_msgs geometry_msgs PCL CUDA)
-target_link_libraries(${PROJECT_NAME}_harrp
+# Windows対応等のための定型句（Linuxでも入れておいて損はありません）
+target_compile_definitions(${PROJECT_NAME}_harrp_component
+  PRIVATE "COMPOSITION_BUILDING_DLL"
+)
+
+# 依存関係
+ament_target_dependencies(${PROJECT_NAME}_harrp_component
+  rclcpp
+  rclcpp_components # 【追加】
+  std_msgs
+  vision_msgs
+  geometry_msgs
+  PCL
+  CUDA
+)
+
+# リンク設定
+target_link_libraries(${PROJECT_NAME}_harrp_component
     libnvinfer.so
     libnvonnxparser.so
     libnvinfer_plugin.so
 )
 
+# 【追加】コンポーネントの登録
+# 第1引数: ライブラリターゲット名
+# 第2引数: 登録したクラス名 (namespace込み)
+rclcpp_components_register_nodes(${PROJECT_NAME}_harrp_component
+    "pp_infer::PointPillarsHarrpNode"
+)
+
 # ========================================================
 # Install Rules
 # ========================================================
-# 両方の実行ファイルをインストール対象にします
+# ライブラリのインストール設定に変更
 install(TARGETS
-    ${PROJECT_NAME}        # pp_infer
-    ${PROJECT_NAME}_harrp  # pp_infer_harrp
-  DESTINATION lib/${PROJECT_NAME})
+    ${PROJECT_NAME}_harrp_component
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+# もしオリジナルの実行ファイルも残しているならそれもinstall記述が必要
+# install(TARGETS ${PROJECT_NAME} DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
   launch
+  include # ヘッダ類も必要なら
   DESTINATION share/${PROJECT_NAME}/
 )
 
