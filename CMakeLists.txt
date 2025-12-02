@@ -99,7 +99,7 @@ set(HARRP_SOURCES
 # 【変更】cuda_add_executable から cuda_add_library (SHARED) に変更
 # ターゲット名も少し変えておくと分かりやすいです: pp_infer_harrp_component
 cuda_add_library(${PROJECT_NAME}_harrp_component SHARED
-    src/pp_inference_node_harrp.cpp 
+    src/pp_inference_node_harrpcomp.cpp
     ${HARRP_SOURCES}
 )
 
@@ -134,18 +134,44 @@ rclcpp_components_register_nodes(${PROJECT_NAME}_harrp_component
 )
 
 # ========================================================
+# 3. HARRP Standalone Executable (pp_infer_harrp)
+# ========================================================
+# src/pp_inference_node_harrp.cpp を使用します
+cuda_add_executable(pp_infer_harrp
+    src/pp_inference_node_harrp.cpp
+    ${HARRP_SOURCES}  # pointpillar_harrp.cpp, postprocess.cpp
+)
+
+ament_target_dependencies(pp_infer_harrp
+    rclcpp
+    std_msgs
+    vision_msgs
+    geometry_msgs
+    PCL
+    CUDA
+)
+
+target_link_libraries(pp_infer_harrp
+    libnvinfer.so
+    libnvonnxparser.so
+    libnvinfer_plugin.so
+)
+
+# ========================================================
 # Install Rules
 # ========================================================
 # ライブラリのインストール設定に変更
 install(TARGETS
     ${PROJECT_NAME}_harrp_component
+    pp_infer_harrp
+    ${PROJECT_NAME}
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 # もしオリジナルの実行ファイルも残しているならそれもinstall記述が必要
-# install(TARGETS ${PROJECT_NAME} DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${PROJECT_NAME} DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
   launch
