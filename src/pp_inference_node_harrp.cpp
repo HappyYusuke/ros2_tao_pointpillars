@@ -50,7 +50,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <rclcpp_components/register_node_macro.hpp> // コンポーネント登録用ヘッダ
+
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
@@ -107,14 +107,11 @@ struct BoxInfo {
     }
 };
 
-namespace pp_infer
-{
-
-class PointPillarsHarrpNode : public rclcpp::Node
+class MinimalPublisher : public rclcpp::Node
 {
 public:
-  PointPillarsHarrpNode(const rclcpp::NodeOptions & options)
-  : Node("point_pillars_harrp_node", options)
+  MinimalPublisher()
+  : Node("minimal_publisher")
   {
     this->declare_parameter("class_names");
     this->declare_parameter<float>("nms_iou_thresh", 0.01);
@@ -141,7 +138,7 @@ public:
     // 修正: QoSをReliableに戻して、データの取りこぼしを防ぐ
     // 処理速度が十分高速化したため(14ms)、Reliableでも処理遅延は発生しません
     subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "/point_cloud", 10, std::bind(&PointPillarsHarrpNode::topic_callback, this, _1));
+      "/point_cloud", 10, std::bind(&MinimalPublisher::topic_callback, this, _1));
 
   }
 
@@ -328,6 +325,10 @@ private:
   size_t count_;
 };
 
-} // namespace pp_infer
-
-RCLCPP_COMPONENTS_REGISTER_NODE(pp_infer::PointPillarsHarrpNode)
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<MinimalPublisher>());
+  rclcpp::shutdown();
+  return 0;
+}
